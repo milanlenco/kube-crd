@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/yaronha/kube-crd/client"
-	"github.com/yaronha/kube-crd/crd"
+	"github.com/milanlenco/kube-crd/client"
+	"github.com/milanlenco/kube-crd/crd"
 
 	apiextcs "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -73,23 +73,26 @@ func main() {
 	// Create a CRD client interface
 	crdclient := client.CrdClient(crdcs, scheme, "default")
 
-	// Create a new Example object and write to k8s
-	example := &crd.Example{
+	// Create a new NodeConfig object and write to k8s
+	NodeConfig := &crd.NodeConfig{
 		ObjectMeta: meta_v1.ObjectMeta{
-			Name:   "example123",
+			Name:   "lubuntu1",
 			Labels: map[string]string{"mylabel": "test"},
 		},
-		Spec: crd.ExampleSpec{
-			Foo: "example-text",
-			Bar: true,
+		Spec: crd.NodeConfigSpec{
+			NodeName: "lubuntu1",
+			MainVPPInterface: crd.InterfaceWithIP{
+				InterfaceName: "GigabitEthernet0/8/0",
+				IP: "192.168.16.10/24",
+			},
 		},
-		Status: crd.ExampleStatus{
+		Status: crd.NodeConfigStatus{
 			State:   "created",
 			Message: "Created, not processed yet",
 		},
 	}
 
-	result, err := crdclient.Create(example)
+	result, err := crdclient.Create(NodeConfig)
 	if err == nil {
 		fmt.Printf("CREATED: %#v\n", result)
 	} else if apierrors.IsAlreadyExists(err) {
@@ -98,18 +101,18 @@ func main() {
 		panic(err)
 	}
 
-	// List all Example objects
+	// List all NodeConfig objects
 	items, err := crdclient.List(meta_v1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("List:\n%s\n", items)
 
-	// Example Controller
-	// Watch for changes in Example objects and fire Add, Delete, Update callbacks
+	// NodeConfig Controller
+	// Watch for changes in NodeConfig objects and fire Add, Delete, Update callbacks
 	_, controller := cache.NewInformer(
 		crdclient.NewListWatch(),
-		&crd.Example{},
+		&crd.NodeConfig{},
 		time.Minute*10,
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {

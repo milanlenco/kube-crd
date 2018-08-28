@@ -29,8 +29,8 @@ import (
 )
 
 const (
-	CRDPlural      string = "examples"
-	CRDGroup       string = "myorg.io"
+	CRDPlural      string = "nodeconfigs"
+	CRDGroup       string = "contiv.vpp"
 	CRDVersion     string = "v1"
 	FullCRDName    string = CRDPlural + "." + CRDGroup
 )
@@ -45,7 +45,7 @@ func CreateCRD(clientset apiextcs.Interface) error {
 			Scope:   apiextv1beta1.NamespaceScoped,
 			Names:   apiextv1beta1.CustomResourceDefinitionNames{
 				Plural: CRDPlural,
-				Kind:   reflect.TypeOf(Example{}).Name(),
+				Kind:   reflect.TypeOf(NodeConfig{}).Name(),
 			},
 		},
 	}
@@ -56,31 +56,41 @@ func CreateCRD(clientset apiextcs.Interface) error {
 	}
 	return err
 
-	// Note the original apiextensions example adds logic to wait for creation and exception handling
+	// Note the original apiextensions NodeConfig adds logic to wait for creation and exception handling
 }
 
-// Definition of our CRD Example class
-type Example struct {
+// Definition of our CRD NodeConfig class
+type NodeConfig struct {
 	meta_v1.TypeMeta   `json:",inline"`
 	meta_v1.ObjectMeta `json:"metadata"`
-	Spec               ExampleSpec   `json:"spec"`
-	Status             ExampleStatus `json:"status,omitempty"`
-}
-type ExampleSpec struct {
-	Foo string `json:"foo"`
-	Bar bool   `json:"bar"`
-	Baz int    `json:"baz,omitempty"`
+	Spec    NodeConfigSpec   `json:"spec"`
+	Status  NodeConfigStatus `json:"status,omitempty"`
 }
 
-type ExampleStatus struct {
+type InterfaceWithIP struct {
+	InterfaceName string `json:"interface_name"`
+	IP            string `json:"ip,omitempty"`
+	UseDHCP       bool   `json:"use_dhcp,omitempty"`
+}
+
+type NodeConfigSpec struct {
+	NodeName           string            `json:"node_name"`                      // name of the node, should match withs the hostname
+	MainVPPInterface   InterfaceWithIP   `json:"main_vpp_interface,omitempty"`   // main VPP interface used for the inter-node connectivity
+	OtherVPPInterfaces []InterfaceWithIP `json:"other_vpp_interfaces,omitempty"` // other interfaces on VPP, not necessarily used for inter-node connectivity
+	StealInterface     string            `json:"steal_interface,omitempty"`      // interface to be stolen from the host stack and bound to VPP
+	Gateway            string            `json:"gateway,omitempty"`              // IP address of the default gateway
+	NatExternalTraffic bool              `json:"nat_external_traffic,omitempty"` // whether to NAT external traffic or not
+}
+
+type NodeConfigStatus struct {
 	State   string `json:"state,omitempty"`
 	Message string `json:"message,omitempty"`
 }
 
-type ExampleList struct {
+type NodeConfigList struct {
 	meta_v1.TypeMeta `json:",inline"`
 	meta_v1.ListMeta `json:"metadata"`
-	Items            []Example `json:"items"`
+	Items            []NodeConfig `json:"items"`
 }
 
 // Create a  Rest client with the new CRD Schema
@@ -88,8 +98,8 @@ var SchemeGroupVersion = schema.GroupVersion{Group: CRDGroup, Version: CRDVersio
 
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&Example{},
-		&ExampleList{},
+		&NodeConfig{},
+		&NodeConfigList{},
 	)
 	meta_v1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
